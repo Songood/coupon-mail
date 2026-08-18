@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', sans-serif; background: #f5f6fa; }
+
+  .tabs { display: flex; background: white; border-bottom: 2px solid #dfe6e9; }
+  .tab { padding: 14px 24px; font-size: 14px; font-weight: 600; color: #b2bec3; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tab.active { color: #0984e3; border-bottom-color: #0984e3; }
+
+  .page { display: none; padding: 20px; }
+  .page.active { display: block; }
+
+  .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  h3 { font-size: 15px; color: #2d3436; margin-bottom: 16px; }
+
+  label { display: block; font-size: 12px; color: #636e72; margin-bottom: 5px; font-weight: 600; }
+  input, select { width: 100%; padding: 9px 12px; border: 1.5px solid #dfe6e9; border-radius: 8px; font-size: 13px; font-family: 'Malgun Gothic', sans-serif; outline: none; transition: border 0.2s; }
+  input:focus, select:focus { border-color: #0984e3; }
+  input[readonly] { background: #f8f9fa; color: #636e72; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .full { margin-bottom: 12px; }
+
+  button { padding: 10px 16px; border: none; border-radius: 8px; font-size: 13px; font-family: 'Malgun Gothic', sans-serif; cursor: pointer; font-weight: 600; transition: 0.2s; }
+  .btn-blue { background: #0984e3; color: white; }
+  .btn-blue:hover { background: #0773c5; }
+  .btn-red { background: #ff7675; color: white; padding: 6px 12px; font-size: 12px; }
+  .btn-gray { background: #dfe6e9; color: #636e72; }
+
+  .type-btn-group { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .type-btn { flex: 1; padding: 9px 8px; border: 2px solid #dfe6e9; border-radius: 8px; background: white; color: #636e72; font-size: 12px; font-weight: 600; cursor: pointer; min-width: 70px; }
+  .type-btn.active { border-color: #0984e3; color: #0984e3; background: #f0f8ff; }
+
+  .merchant-list { display: flex; flex-direction: column; gap: 8px; }
+  .merchant-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #f8f9fa; border-radius: 8px; border: 1.5px solid #dfe6e9; cursor: pointer; transition: 0.2s; }
+  .merchant-item:hover { border-color: #0984e3; background: #f0f8ff; }
+  .merchant-item.selected { border-color: #0984e3; background: #f0f8ff; }
+  .merchant-name { font-weight: 700; font-size: 14px; color: #2d3436; flex: 1; }
+  .merchant-type { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: 600; }
+  .type-후취 { background: #ffeaa7; color: #d4a017; }
+  .type-후취_VAT { background: #fab1a0; color: #c0392b; }
+  .type-선취 { background: #a8d8ea; color: #0984e3; }
+  .type-선취_MMS { background: #b8e994; color: #27ae60; }
+
+  .result-box { border: 1.5px solid #dfe6e9; border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+  .result-header { background: #f0f4f8; padding: 10px 14px; font-size: 12px; font-weight: 700; color: #636e72; display: flex; align-items: center; justify-content: space-between; }
+  .result-body { padding: 14px; font-size: 13px; color: #2d3436; background: white; }
+  .btn-copy-small { background: #0984e3; color: white; padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+
+  .attach-warning { background: #fff3cd; border: 1.5px solid #ffc107; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #856404; font-weight: 600; margin-bottom: 12px; }
+
+  /* 메일 본문 표 */
+  #mail-content { font-family: 'Malgun Gothic', sans-serif; font-size: 14px; line-height: 2; color: #2d3436; }
+  #mail-content table { border-collapse: collapse; margin: 10px 0; }
+  #mail-content td { border: 1px solid #b2bec3; padding: 7px 16px; font-size: 14px; }
+  #mail-content td:first-child { background: #f0f4f8; font-weight: 600; width: 100px; text-align: center; }
+  #mail-content td:last-child { text-align: right; min-width: 160px; }
+  .highlight-num { background: #fff200; font-weight: 700; }
+
+  .to-info { font-size: 12px; color: #636e72; background: #f0f4f8; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; line-height: 1.8; }
+  .calc-hint { font-size: 11px; color: #0984e3; margin-top: 4px; }
+
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #2d3436; color: white; padding: 12px 24px; border-radius: 24px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; }
+
+  /* 커스텀 확인 팝업 */
+  .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:1000; display:flex; align-items:center; justify-content:center; }
+  .modal { background:white; border-radius:14px; padding:24px; width:280px; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+  .modal p { font-size:14px; color:#2d3436; margin-bottom:20px; line-height:1.6; }
+  .modal-btns { display:flex; gap:10px; }
+  .modal-btns button { flex:1; }
+  .divider { border: none; border-top: 1.5px dashed #dfe6e9; margin: 14px 0; }
+  .section-title { font-size: 12px; font-weight: 700; color: #0984e3; margin-bottom: 10px; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .checkbox-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+  .checkbox-row label { margin: 0; font-size: 13px; color: #2d3436; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('write', this)">✍️ 메일 작성</div>
+  <div class="tab" onclick="showTab('merchants', this)">🏪 가맹점 관리</div>
+</div>
+
+<!-- 메일 작성 탭 -->
+<div class="page active" id="page-write">
+  <div class="card">
+    <h3>가맹점 선택</h3>
+    <div id="merchant-select-list" class="merchant-list"></div>
+    <div id="no-merchant" class="empty" style="display:none;">가맹점 관리 탭에서 가맹점을 먼저 추가해주세요!</div>
+  </div>
+
+  <div class="card" id="input-card" style="display:none;">
+    <div class="to-info" id="to-info"></div>
+
+    <div class="row2">
+      <div><label>정산 년도</label><input type="number" id="year" value="2026" oninput="generate()"></div>
+      <div><label>정산 월</label><input type="number" id="month" value="7" min="1" max="12" oninput="generate()"></div>
+    </div>
+
+    <!-- 후취/선취 공통 -->
+    <div id="section-common">
+      <div class="row2">
+        <div><label>거래금액 (원)</label><input type="text" id="trade" placeholder="예) 30387650" oninput="generate()"></div>
+        <div><label>할인금액 (원)</label><input type="text" id="discount" placeholder="예) 1241608" oninput="generate()"></div>
+      </div>
+      <div id="row-vat" style="display:none;" class="full">
+        <label>VAT (원, 할인금액×10% 자동계산)</label>
+        <input type="text" id="vat" readonly placeholder="자동 계산">
+      </div>
+      <div class="full">
+        <label>청구금액 (원)</label>
+        <input type="text" id="charge" readonly placeholder="자동 계산">
+        <div class="calc-hint" id="charge-hint"></div>
+      </div>
+    </div>
+
+    <!-- 선취 MMS 전용 -->
+    <div id="mms-section" style="display:none;">
+      <hr class="divider">
+      <div class="section-title">MMS 이용내역 (자동 계산)</div>
+      <div class="row2">
+        <div>
+          <label>이용건수</label>
+          <input type="text" id="mms-count" placeholder="예) 284" oninput="generate()">
+        </div>
+        <div>
+          <label>건당 고정금액 (원)</label>
+          <input type="text" id="mms-unit" placeholder="자동입력" readonly>
+        </div>
+      </div>
+      <div class="row2">
+        <div><label>공급가액 (원)</label><input type="text" id="mms-supply" readonly placeholder="자동 계산"></div>
+        <div><label>VAT (원, 공급가액×10%)</label><input type="text" id="mms-vat" readonly placeholder="자동 계산"></div>
+      </div>
+      <div class="full"><label>합계 (원)</label><input type="text" id="mms-total" readonly placeholder="자동 계산"></div>
+      <hr class="divider">
+      <div class="section-title">쿠칩 거래내역</div>
+      <div class="row2">
+        <div><label>거래금액 (원)</label><input type="text" id="mms-trade" placeholder="예) 25706600" oninput="generate()"></div>
+        <div><label>할인금액 (원)</label><input type="text" id="mms-discount" placeholder="예) 3097556" oninput="generate()"></div>
+      </div>
+      <div class="full">
+        <label>청구금액 (원)</label>
+        <input type="text" id="mms-charge" readonly placeholder="자동 계산">
+        <div class="calc-hint" id="mms-charge-hint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div id="result-section" style="display:none;">
+    <div id="attach-warning" class="attach-warning" style="display:none;">
+      📎 이 가맹점은 첨부파일이 필요해요! 메일 발송 전 꼭 확인하세요.
+    </div>
+    <div class="result-box">
+      <div class="result-header">📧 메일 제목 <button class="btn-copy-small" onclick="copyText('mail-subject')">복사</button></div>
+      <div class="result-body" id="mail-subject"></div>
+    </div>
+    <div class="result-box">
+      <div class="result-header">📋 받는 사람 (TO) <button class="btn-copy-small" onclick="copyText('mail-to')">복사</button></div>
+      <div class="result-body" id="mail-to"></div>
+    </div>
+    <div id="mail-cc-box" class="result-box">
+      <div class="result-header">📋 참조 (CC) <button class="btn-copy-small" onclick="copyText('mail-cc')">복사</button></div>
+      <div class="result-body" id="mail-cc"></div>
+    </div>
+    <div class="result-box">
+      <div class="result-header">📝 본문 <button class="btn-copy-small" onclick="copyEl('mail-content')">복사</button></div>
+      <div class="result-body"><div id="mail-content"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 가맹점 관리 탭 -->
+<div class="page" id="page-merchants">
+  <div class="card">
+    <h3>가맹점 추가</h3>
+    <div class="full"><label>가맹점명</label><input type="text" id="new-name" placeholder="예) 당근페이(B2C)"></div>
+    <div class="full">
+      <label>유형</label>
+      <div class="type-btn-group">
+        <button class="type-btn active" onclick="selectNewType('후취', this)">후취</button>
+        <button class="type-btn" onclick="selectNewType('후취_VAT', this)">후취 (VAT)</button>
+        <button class="type-btn" onclick="selectNewType('선취', this)">선취</button>
+        <button class="type-btn" onclick="selectNewType('선취_MMS', this)">선취 MMS</button>
+      </div>
+    </div>
+    <div class="full"><label>받는 사람 이메일 (TO)</label><input type="text" id="new-to" placeholder="예) jayleen@daangnpay.com"></div>
+    <div class="full"><label>참조 이메일 (CC) — 없으면 빈칸</label><input type="text" id="new-cc" placeholder="예) couchip@hecto.co.kr"></div>
+    <div class="full" id="new-unit-row" style="display:none;">
+      <label>MMS 건당 고정금액 (원)</label>
+      <input type="text" id="new-unit" placeholder="예) 60">
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="new-attach">
+      <label for="new-attach">첨부파일 필요한 가맹점</label>
+    </div>
+    <button class="btn-blue" style="width:100%;" onclick="addMerchant()">+ 가맹점 추가</button>
+  </div>
+
+  <div class="card">
+    <h3>등록된 가맹점</h3>
+    <div id="merchant-manage-list" class="merchant-list"><div class="empty">아직 등록된 가맹점이 없어요.</div></div>
+  </div>
+</div>
+
+<div id="modal" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <p id="modal-msg"></p>
+    <div class="modal-btns">
+      <button class="btn-gray" onclick="closeModal()">취소</button>
+      <button class="btn-red" style="padding:10px 16px; font-size:13px;" onclick="confirmModal()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let merchants = JSON.parse(localStorage.getItem('merchants') || '[]');
+let selectedIdx = -1;
+let newType = '후취';
+
+function showTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'write') renderSelectList();
+  if (tab === 'merchants') renderManageList();
+}
+
+function selectNewType(type, btn) {
+  newType = type;
+  document.querySelectorAll('#page-merchants .type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('new-unit-row').style.display = type === '선취_MMS' ? 'block' : 'none';
+}
+
+function saveMerchants() { localStorage.setItem('merchants', JSON.stringify(merchants)); }
+
+function addMerchant() {
+  const name = document.getElementById('new-name').value.trim();
+  const to   = document.getElementById('new-to').value.trim();
+  const cc   = document.getElementById('new-cc').value.trim();
+  const attach = document.getElementById('new-attach').checked;
+  const unit = parseInt(document.getElementById('new-unit').value.replace(/[^0-9]/g,'')) || 0;
+  if (!name) { showToast('가맹점명을 입력해주세요!'); return; }
+  if (!to)   { showToast('받는 사람 이메일을 입력해주세요!'); return; }
+  if (newType === '선취_MMS' && !unit) { showToast('MMS 건당 고정금액을 입력해주세요!'); return; }
+  merchants.push({ name, type: newType, to, cc, attach, unit });
+  saveMerchants();
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-to').value = '';
+  document.getElementById('new-cc').value = '';
+  document.getElementById('new-unit').value = '';
+  document.getElementById('new-attach').checked = false;
+  renderManageList();
+  showToast('✅ 가맹점 추가 완료!');
+}
+
+let deleteTargetIdx = -1;
+
+function deleteMerchant(idx) {
+  deleteTargetIdx = idx;
+  document.getElementById('modal-msg').textContent = `"${merchants[idx].name}" 가맹점을 삭제할까요?`;
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+  deleteTargetIdx = -1;
+}
+function confirmModal() {
+  if (deleteTargetIdx < 0) return;
+  merchants.splice(deleteTargetIdx, 1);
+  saveMerchants();
+  if (selectedIdx === deleteTargetIdx) selectedIdx = -1;
+  closeModal();
+  renderManageList();
+  renderSelectList();
+  showToast('🗑️ 가맹점이 삭제됐어요.');
+}
+
+function toggleEdit(idx) {
+  const el = document.getElementById(`edit-${idx}`);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveEdit(idx) {
+  merchants[idx].name   = document.getElementById(`edit-name-${idx}`).value.trim();
+  merchants[idx].type   = document.getElementById(`edit-type-${idx}`).value;
+  merchants[idx].to     = document.getElementById(`edit-to-${idx}`).value.trim();
+  merchants[idx].cc     = document.getElementById(`edit-cc-${idx}`).value.trim();
+  merchants[idx].attach = document.getElementById(`edit-attach-${idx}`).checked;
+  merchants[idx].unit   = parseInt(document.getElementById(`edit-unit-${idx}`)?.value.replace(/[^0-9]/g,'')) || 0;
+  saveMerchants();
+  renderManageList();
+  renderSelectList();
+  showToast('✅ 수정 완료!');
+}
+
+function typeLabel(t) {
+  return {'후취':'후취','후취_VAT':'후취 VAT','선취':'선취','선취_MMS':'선취 MMS'}[t] || t;
+}
+
+function renderManageList() {
+  const el = document.getElementById('merchant-manage-list');
+  if (!merchants.length) { el.innerHTML = '<div class="empty">아직 등록된 가맹점이 없어요.</div>'; return; }
+  el.innerHTML = merchants.map((m, i) => `
+    <div class="merchant-item" style="cursor:default; flex-direction:column; align-items:flex-start; gap:8px;">
+      <div style="display:flex; width:100%; align-items:center; gap:8px;">
+        <div class="merchant-name">${m.name}</div>
+        <span class="merchant-type type-${m.type}">${typeLabel(m.type)}</span>
+        ${m.attach ? '<span style="font-size:11px;color:#e17055;">📎첨부필요</span>' : ''}
+        <button class="btn-gray" style="padding:6px 12px;font-size:12px;margin-left:auto;" onclick="toggleEdit(${i})">수정</button>
+        <button class="btn-red" onclick="deleteMerchant(${i})">삭제</button>
+      </div>
+      <div id="edit-${i}" style="display:none; width:100%; border-top:1px dashed #dfe6e9; padding-top:10px;">
+        <div class="full"><label>가맹점명</label><input type="text" id="edit-name-${i}" value="${m.name}"></div>
+        <div class="full"><label>유형</label>
+          <select id="edit-type-${i}">
+            <option value="후취" ${m.type==='후취'?'selected':''}>후취</option>
+            <option value="후취_VAT" ${m.type==='후취_VAT'?'selected':''}>후취 (VAT)</option>
+            <option value="선취" ${m.type==='선취'?'selected':''}>선취</option>
+            <option value="선취_MMS" ${m.type==='선취_MMS'?'selected':''}>선취 MMS</option>
+          </select>
+        </div>
+        <div class="full"><label>받는 사람 (TO)</label><input type="text" id="edit-to-${i}" value="${m.to}"></div>
+        <div class="full"><label>참조 (CC)</label><input type="text" id="edit-cc-${i}" value="${m.cc||''}"></div>
+        ${m.type==='선취_MMS' ? `<div class="full"><label>MMS 건당 고정금액 (원)</label><input type="text" id="edit-unit-${i}" value="${m.unit||''}"></div>` : `<input type="hidden" id="edit-unit-${i}" value="0">`}
+        <div class="checkbox-row" style="margin-bottom:12px;">
+          <input type="checkbox" id="edit-attach-${i}" ${m.attach?'checked':''}>
+          <label for="edit-attach-${i}">첨부파일 필요한 가맹점</label>
+        </div>
+        <button class="btn-blue" style="width:100%;" onclick="saveEdit(${i})">💾 저장</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderSelectList() {
+  const el = document.getElementById('merchant-select-list');
+  const noEl = document.getElementById('no-merchant');
+  if (!merchants.length) {
+    el.innerHTML = ''; noEl.style.display = 'block';
+    document.getElementById('input-card').style.display = 'none';
+    document.getElementById('result-section').style.display = 'none';
+    return;
+  }
+  noEl.style.display = 'none';
+  el.innerHTML = merchants.map((m, i) => `
+    <div class="merchant-item ${selectedIdx===i?'selected':''}" onclick="selectMerchant(${i})">
+      <div class="merchant-name">${m.name}</div>
+      <span class="merchant-type type-${m.type}">${typeLabel(m.type)}</span>
+      ${m.attach ? '<span style="font-size:11px;color:#e17055;">📎첨부필요</span>' : ''}
+    </div>
+  `).join('');
+}
+
+function selectMerchant(idx) {
+  selectedIdx = idx;
+  const m = merchants[idx];
+  renderSelectList();
+  document.getElementById('to-info').innerHTML = `<b>TO:</b> ${m.to}${m.cc?'<br><b>CC:</b> '+m.cc:''}`;
+  document.getElementById('row-vat').style.display = m.type==='후취_VAT' ? 'block' : 'none';
+  document.getElementById('section-common').style.display = m.type==='선취_MMS' ? 'none' : 'block';
+  document.getElementById('mms-section').style.display = m.type==='선취_MMS' ? 'block' : 'none';
+  if (m.type === '선취_MMS') document.getElementById('mms-unit').value = m.unit ? m.unit.toLocaleString() + ' 원' : '-';
+  document.getElementById('input-card').style.display = 'block';
+  document.getElementById('result-section').style.display = 'block';
+  // 입력값 초기화
+  ['trade','discount','vat','charge','mms-count','mms-supply','mms-vat','mms-total','mms-trade','mms-discount','mms-charge'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  generate();
+}
+
+// 날짜 유틸
+function isHoliday(d) {
+  const mmdd = `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return ['01-01','03-01','05-05','06-06','08-15','10-03','10-09','12-25'].includes(mmdd);
+}
+function prevWorkday(d) {
+  let t = new Date(d); t.setDate(t.getDate()-1);
+  while (t.getDay()===0||t.getDay()===6||isHoliday(t)) t.setDate(t.getDate()-1);
+  return t;
+}
+function getTaxDeadline(year, month) {
+  let d = new Date(year, month-1, 10);
+  while (d.getDay()===0||d.getDay()===6||isHoliday(d)) d = prevWorkday(d);
+  return `${d.getMonth()+1}월 ${d.getDate()}일`;
+}
+function getPeriod(y, m) {
+  const mm = String(m).padStart(2,'0');
+  const last = new Date(y, m, 0).getDate();
+  return `${String(y).slice(2)}.${mm}.01~${String(y).slice(2)}.${mm}.${last}`;
+}
+function toInt(id) {
+  const v = document.getElementById(id)?.value || '';
+  return parseInt(v.replace(/[^0-9]/g,'')) || 0;
+}
+function fmt(n) {
+  if (!n && n !== 0) return '-';
+  return n.toLocaleString('ko-KR') + ' 원';
+}
+function fmtHL(n) {
+  // 청구금액: 숫자+원 전체 형광펜 + 볼드
+  if (!n && n !== 0) return '-';
+  return `<span class="highlight-num"><b>${n.toLocaleString('ko-KR')} 원</b></span>`;
+}
+
+function generate() {
+  if (selectedIdx < 0) return;
+  const m = merchants[selectedIdx];
+  const y = parseInt(document.getElementById('year').value);
+  const mo = parseInt(document.getElementById('month').value);
+  let curMo = mo+1, curY = y;
+  if (curMo > 12) { curMo=1; curY++; }
+  const period = getPeriod(y, mo);
+  const taxDL = getTaxDeadline(curY, curMo);
+  const payDL = `${curMo}월 20일`;
+
+  let chargeVal = 0;
+  let html = '';
+
+  if (m.type === '선취_MMS') {
+    const count   = toInt('mms-count');
+    const unit    = m.unit || 0;
+    const supply  = count * unit;
+    const mmsVat  = Math.round(supply * 0.1);
+    const total   = supply + mmsVat;
+    const trade   = toInt('mms-trade');
+    const disc    = toInt('mms-discount');
+    chargeVal     = trade - disc;
+
+    // 자동 채우기
+    document.getElementById('mms-supply').value = supply ? supply.toLocaleString() + ' 원' : '';
+    document.getElementById('mms-vat').value    = mmsVat ? mmsVat.toLocaleString() + ' 원' : '';
+    document.getElementById('mms-total').value  = total ? total.toLocaleString() + ' 원' : '';
+    document.getElementById('mms-charge').value = chargeVal ? chargeVal.toLocaleString() + ' 원' : '';
+    document.getElementById('mms-charge-hint').textContent = trade && disc ? `거래금액(${trade.toLocaleString()}) - 할인금액(${disc.toLocaleString()}) = ${chargeVal.toLocaleString()}` : '';
+
+    const countDisp = count ? `${count}건` : '-';
+    html += `안녕하세요.<br>헥토파이낸셜 쿠칩 담당자입니다.<br><br>`;
+    html += `${mo}월 쿠칩 이용 금액을 공유 드리오니, 상세 내역은 쿠칩 가맹점 관리자 내에서 확인 부탁드립니다.<br><br>`;
+    html += `<b>&lt;MMS 이용내역&gt;</b><br>
+    <table>
+      <tr><td>정산기간</td><td>${period}</td></tr>
+      <tr><td>이용건수</td><td>${countDisp}</td></tr>
+      <tr><td>공급가액</td><td>${fmt(supply)}</td></tr>
+      <tr><td>VAT</td><td>${fmt(mmsVat)}</td></tr>
+      <tr><td>합계</td><td>${fmt(total)}</td></tr>
+    </table>`;
+    html += `-. 입금계좌 : 농협은행 369-01-015296 주식회사 헥토파이낸셜<br><br>`;
+    html += `<table>
+      <tr><td>정산기간</td><td>${period}</td></tr>
+      <tr><td>거래금액</td><td>${fmt(trade)}</td></tr>
+      <tr><td>할인금액</td><td>${fmt(disc)}</td></tr>
+      <tr><td>청구금액</td><td>${fmtHL(chargeVal)}</td></tr>
+    </table>`;
+  } else {
+    const trade = toInt('trade');
+    const disc  = toInt('discount');
+    const vat   = m.type === '후취_VAT' ? Math.round(disc * 0.1) : toInt('vat');
+    if (m.type === '후취_VAT') {
+      document.getElementById('vat').value = vat ? vat.toLocaleString() + ' 원' : '';
+      chargeVal = trade - disc - vat;
+    } else chargeVal = trade - disc;
+
+    document.getElementById('charge').value = chargeVal ? chargeVal.toLocaleString() + ' 원' : '';
+    if (m.type === '후취_VAT') {
+      document.getElementById('charge-hint').textContent = trade && disc ? `거래금액(${trade.toLocaleString()}) - 할인금액(${disc.toLocaleString()}) - VAT(${vat.toLocaleString()}) = ${chargeVal.toLocaleString()}` : '';
+    } else {
+      document.getElementById('charge-hint').textContent = trade && disc ? `거래금액(${trade.toLocaleString()}) - 할인금액(${disc.toLocaleString()}) = ${chargeVal.toLocaleString()}` : '';
+    }
+
+    html += `안녕하세요.<br>헥토파이낸셜 쿠칩 담당자입니다.<br><br>`;
+    if (m.type === '후취_VAT') {
+      html += `${mo}월 거래 상세 데이터, 인보이스 전달 드리오니,<br>`;
+      html += `${taxDL}까지 세금계산서 발행 및 ${payDL}까지 입금 요청 드립니다.<br>`;
+      html += `(첨부파일 비밀번호 : hecto12!@)<br><br>`;
+      html += `-. 입금 계좌 : 우리은행 1005-503-092226 (주)헥토파이낸셜<br><br>`;
+      html += `<table>
+        <tr><td>정산기간</td><td>${period}</td></tr>
+        <tr><td>거래금액</td><td>${fmt(trade)}</td></tr>
+        <tr><td>할인금액</td><td>${fmt(disc)}</td></tr>
+        <tr><td>VAT</td><td>${fmt(vat)}</td></tr>
+        <tr><td>청구금액</td><td>${fmtHL(chargeVal)}</td></tr>
+      </table>`;
+    } else if (m.type === '선취') {
+      html += `${mo}월 이용 금액을 거래 상세 데이터 파일에서 확인 부탁드립니다. (파일 PW : hecto12!@)<br><br>`;
+      html += `<table>
+        <tr><td>정산기간</td><td>${period}</td></tr>
+        <tr><td>거래금액</td><td>${fmt(trade)}</td></tr>
+        <tr><td>할인금액</td><td>${fmt(disc)}</td></tr>
+        <tr><td>청구금액</td><td>${fmtHL(chargeVal)}</td></tr>
+      </table>`;
+    } else {
+      html += `유첨파일 통해 ${m.name} 데이터 전달 드립니다.<br>`;
+      html += `(첨부파일 비밀번호 : hecto12!@)<br>`;
+      html += `특이사항 없을 경우, ${payDL}까지 정산 금액 입금 부탁 드립니다.<br><br>`;
+      html += `<table>
+        <tr><td>정산기간</td><td>${period}</td></tr>
+        <tr><td>거래금액</td><td>${fmt(trade)}</td></tr>
+        <tr><td>할인금액</td><td>${fmt(disc)}</td></tr>
+        <tr><td>청구금액</td><td>${fmtHL(chargeVal)}</td></tr>
+      </table>`;
+      html += `<br>-. 입금 계좌 : 우리은행 1005-503-092226 (주)헥토파이낸셜`;
+    }
+  }
+  html += `<br><br>감사합니다.`;
+
+  document.getElementById('mail-subject').textContent = `[쿠칩] ${mo}월 정산 내역 전달의 건_${m.name}`;
+  document.getElementById('mail-to').textContent = m.to;
+  const ccBox = document.getElementById('mail-cc-box');
+  if (m.cc) { document.getElementById('mail-cc').textContent = m.cc; ccBox.style.display='block'; }
+  else ccBox.style.display='none';
+  document.getElementById('attach-warning').style.display = m.attach ? 'block' : 'none';
+  document.getElementById('mail-content').innerHTML = html;
+}
+
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>showToast('📋 복사 완료!'));
+}
+function copyEl(id) {
+  const el = document.getElementById(id);
+  const range = document.createRange();
+  range.selectNode(el);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+  document.execCommand('copy');
+  window.getSelection().removeAllRanges();
+  showToast('📋 본문 복사 완료!');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+renderSelectList();
+</script>
+</body>
+</html>
