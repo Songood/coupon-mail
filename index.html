@@ -173,6 +173,15 @@
       <div class="result-header">📝 본문 <button class="btn-copy-small" onclick="copyEl('mail-content')">복사</button></div>
       <div class="result-body"><div id="mail-content"></div></div>
     </div>
+
+    <button onclick="sendMail()" style="width:100%; padding:14px; background:#6c5ce7; color:white; font-size:15px; border-radius:10px; margin-top:4px;">
+      🚀 네이버 웍스 임시저장
+    </button>
+    <div id="send-status" style="text-align:center; font-size:13px; margin-top:8px; color:#636e72;"></div>
+    <button onclick="downloadServer()" style="width:100%; padding:10px; background:#f0f4f8; color:#636e72; font-size:13px; border-radius:10px; margin-top:8px;">
+      ⬇️ server.py 다운로드
+    </button>
+
   </div>
 </div>
 
@@ -537,6 +546,227 @@ function copyEl(id) {
   window.getSelection().removeAllRanges();
   showToast('📋 본문 복사 완료!');
 }
+async function sendMail() {
+  if (selectedIdx < 0) { showToast('가맹점을 먼저 선택해주세요!'); return; }
+  const m = merchants[selectedIdx];
+  const statusEl = document.getElementById('send-status');
+
+  // 서버 상태 확인
+  statusEl.textContent = '⏳ 서버 연결 확인 중...';
+  try {
+    const res = await fetch('http://localhost:5000/status');
+    const data = await res.json();
+    if (!data.logged_in) {
+      statusEl.textContent = '⚠️ 서버가 로그인 중입니다. 잠시 후 다시 시도해주세요.';
+      return;
+    }
+  } catch {
+    statusEl.textContent = '❌ 서버가 실행되지 않았어요! server.py를 먼저 실행해주세요.';
+    return;
+  }
+
+  // 본문 HTML 가져오기
+  const body = document.getElementById('mail-content').innerHTML;
+  const subject = document.getElementById('mail-subject').textContent;
+
+  if (!subject || !body) { showToast('금액을 먼저 입력해주세요!'); return; }
+
+  statusEl.textContent = '📨 메일 작성 중...';
+  try {
+    const res = await fetch('http://localhost:5000/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject,
+        to: m.to,
+        cc: m.cc || '',
+        body,
+        attachDir: m.attach ? m.name : ''
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      statusEl.textContent = '✅ 임시저장 완료! 네이버 웍스 임시저장함을 확인해주세요.';
+    } else {
+      statusEl.textContent = `❌ 오류: ${data.error}`;
+    }
+  } catch (e) {
+    statusEl.textContent = '❌ 전송 실패. server.py가 실행 중인지 확인해주세요.';
+  }
+}
+
+function downloadServer() {
+  const code = `"""
+쿠칩 정산 메일 자동화 서버
+============================
+실행 방법:
+1. py server.py 실행
+2. 웹앱에서 "메일 임시저장" 버튼 클릭
+
+필요 라이브러리:
+py -m pip install selenium webdriver-manager flask flask-cors
+"""
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import threading, time, os
+from selenium import webdriver
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.edge.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
+
+app = Flask(__name__)
+CORS(app)
+
+NAVER_WORKS_ID = ""
+NAVER_WORKS_PW = ""
+ATTACH_BASE_DIR = r"C:\\Users\\외부망\\Desktop\\첨부파일"
+
+driver = None
+is_logged_in = False
+
+def init_driver():
+    global driver
+    options = Options()
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    service = Service(EdgeChromiumDriverManager().install())
+    driver = webdriver.Edge(service=service, options=options)
+    driver.maximize_window()
+
+def login():
+    global is_logged_in
+    wait = WebDriverWait(driver, 20)
+    driver.get("https://mail.worksmobile.com/")
+    time.sleep(3)
+    id_input = wait.until(EC.presence_of_element_located((By.ID, "id")))
+    id_input.clear()
+    id_input.send_keys(NAVER_WORKS_ID)
+    id_input.send_keys(Keys.ENTER)
+    time.sleep(2)
+    pw_input = wait.until(EC.presence_of_element_located((By.ID, "password")))
+    pw_input.clear()
+    pw_input.send_keys(NAVER_WORKS_PW)
+    pw_input.send_keys(Keys.ENTER)
+    time.sleep(3)
+    print("\\n🔐 2단계 인증이 필요하면 브라우저에서 직접 입력해주세요. (최대 2분 대기)")
+    try:
+        WebDriverWait(driver, 120).until(
+            lambda d: "worksmobile.com" in d.current_url and
+            ("mail" in d.current_url or d.current_url.endswith("/"))
+        )
+        time.sleep(2)
+        is_logged_in = True
+        print("✅ 로그인 완료!")
+    except:
+        print("⚠️ 로그인 시간 초과. 브라우저에서 직접 로그인 후 엔터를 눌러주세요.")
+        input()
+        is_logged_in = True
+
+def compose_and_draft(data):
+    wait = WebDriverWait(driver, 20)
+    compose_btn = wait.until(EC.element_to_be_clickable(
+        (By.CSS_SELECTOR, "a.btn_compose, button.btn_compose, [data-action='compose']")
+    ))
+    compose_btn.click()
+    time.sleep(2)
+    subject = wait.until(EC.presence_of_element_located(
+        (By.CSS_SELECTOR, "input[name='subject'], input.subject")
+    ))
+    subject.clear()
+    subject.send_keys(data["subject"])
+    to_input = wait.until(EC.presence_of_element_located(
+        (By.CSS_SELECTOR, "input[name='to'], .to_input input")
+    ))
+    to_input.clear()
+    to_input.send_keys(data["to"])
+    to_input.send_keys(Keys.ENTER)
+    time.sleep(0.5)
+    if data.get("cc"):
+        try:
+            cc_btn = driver.find_element(By.CSS_SELECTOR, "button.btn_cc, a.btn_cc")
+            cc_btn.click()
+            time.sleep(0.5)
+            cc_input = driver.find_element(By.CSS_SELECTOR, "input[name='cc'], .cc_input input")
+            cc_input.send_keys(data["cc"])
+            cc_input.send_keys(Keys.ENTER)
+            time.sleep(0.5)
+        except:
+            print("  ⚠️ CC 입력 실패")
+    try:
+        iframe = wait.until(EC.presence_of_element_located(
+            (By.CSS_SELECTOR, "iframe.se-iframe, iframe#editor_iframe, iframe[title='편집기']")
+        ))
+        driver.switch_to.frame(iframe)
+        editor = driver.find_element(By.CSS_SELECTOR, "body[contenteditable='true'], div[contenteditable='true']")
+        driver.execute_script("arguments[0].innerHTML = arguments[1]", editor, data["body"])
+        driver.switch_to.default_content()
+    except Exception as e:
+        print(f"  ⚠️ 본문 입력 실패: {e}")
+    time.sleep(0.5)
+    if data.get("attachDir"):
+        attach_path = os.path.join(ATTACH_BASE_DIR, data["attachDir"])
+        if os.path.exists(attach_path):
+            files = [f for f in os.listdir(attach_path) if os.path.isfile(os.path.join(attach_path, f))]
+            if files:
+                try:
+                    file_input = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
+                    for fname in files:
+                        fpath = os.path.abspath(os.path.join(attach_path, fname))
+                        file_input.send_keys(fpath)
+                        time.sleep(1)
+                    print(f"  📎 첨부완료: {files}")
+                except:
+                    print("  ⚠️ 파일 첨부 실패")
+    try:
+        draft_btn = driver.find_element(By.CSS_SELECTOR, "button.btn_draft, a.btn_draft, [data-action='draft']")
+        draft_btn.click()
+        time.sleep(2)
+        print(f"  💾 임시저장 완료: {data['subject']}")
+    except:
+        print("  ⚠️ 임시저장 버튼 못 찾음")
+    time.sleep(1)
+
+@app.route("/status", methods=["GET"])
+def status():
+    return jsonify({"logged_in": is_logged_in})
+
+@app.route("/send", methods=["POST"])
+def send():
+    data = request.json
+    print(f"\\n📨 메일 작성 요청: {data.get('subject')}")
+    try:
+        compose_and_draft(data)
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"❌ 오류: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+if __name__ == "__main__":
+    print("=" * 50)
+    print("  쿠칩 정산 메일 자동화 서버")
+    print("=" * 50)
+    if not NAVER_WORKS_ID:
+        NAVER_WORKS_ID = input("\\n🔐 네이버 웍스 아이디: ").strip()
+    if not NAVER_WORKS_PW:
+        NAVER_WORKS_PW = input("🔐 네이버 웍스 비밀번호: ").strip()
+    print("\\n🌐 Edge 브라우저 시작 중...")
+    init_driver()
+    login()
+    print("\\n✅ 서버 시작! 웹앱에서 메일 전송 버튼을 눌러주세요.")
+    app.run(port=5000)
+`;
+  const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'server.py';
+  a.click();
+  showToast('⬇️ server.py 다운로드 완료!');
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
