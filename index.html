@@ -135,11 +135,16 @@
         <div class="row2" style="margin-bottom:12px;">
           <div>
             <label>정산 년도</label>
-            <input type="number" id="year" value="2026" oninput="generate()">
+            <input type="number" id="year" value="2026" onchange="generate()">
           </div>
           <div>
             <label>정산 월</label>
-            <input type="number" id="month" value="7" min="1" max="12" oninput="generate()">
+            <select id="month" onchange="generate()">
+              <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+              <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+              <option value="7" selected>7월</option><option value="8">8월</option><option value="9">9월</option>
+              <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+            </select>
           </div>
         </div>
         <div id="merchant-select-list" class="merchant-list"></div>
@@ -231,11 +236,12 @@
     <div class="card">
       <div class="month-selector">
         <div class="card-title" style="margin:0; border:none; padding:0;">📋 발송 이력</div>
-        <select id="history-year" onchange="renderHistory()" style="width:90px;">
-          <option>2025</option><option selected>2026</option><option>2027</option>
-        </select>
+        <input type="number" id="history-year" value="2026" onchange="renderHistory()" style="width:80px; padding:8px 10px;">
         <select id="history-month" onchange="renderHistory()" style="width:70px;">
-          ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${m===new Date().getMonth()+1?'selected':''}>${m}월</option>`).join('')}
+          <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+          <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+          <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+          <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
         </select>
       </div>
       <table class="history-table">
