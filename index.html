@@ -116,7 +116,13 @@
   <div class="layout">
     <div>
       <div class="card">
-        <div class="card-title">가맹점 선택</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <div class="card-title" style="margin:0;border:0;padding:0;">가맹점 선택</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#636e72;cursor:pointer;margin:0;">
+            <input type="checkbox" id="hide-skipped" onchange="renderSelectList()" style="width:14px;height:14px;">
+            건너뛴 가맹점 숨기기
+          </label>
+        </div>
         <div class="row2" style="margin-bottom:12px;">
           <div>
             <label>정산 년도</label>
@@ -422,7 +428,22 @@ function saveEdit(idx) {
   showToast('✅ 수정 완료!');
 }
 
-function getMonthKey() {
+function getSkippedKey() {
+  return 'skipped_' + getMonthKey();
+}
+function isSkipped(name) {
+  var skipped = JSON.parse(localStorage.getItem(getSkippedKey()) || '[]');
+  return skipped.indexOf(name) >= 0;
+}
+function toggleSkip(name) {
+  var key = getSkippedKey();
+  var skipped = JSON.parse(localStorage.getItem(key) || '[]');
+  var idx = skipped.indexOf(name);
+  if (idx >= 0) skipped.splice(idx, 1);
+  else skipped.push(name);
+  localStorage.setItem(key, JSON.stringify(skipped));
+  renderSelectList();
+}
   var y = document.getElementById('year') ? document.getElementById('year').value : new Date().getFullYear();
   var m = document.getElementById('month') ? document.getElementById('month').value : (new Date().getMonth() + 1);
   return y + '-' + String(m).padStart(2, '0');
@@ -436,6 +457,7 @@ function getMerchantStatus(name) {
 function renderSelectList() {
   var el = document.getElementById('merchant-select-list');
   var noEl = document.getElementById('no-merchant');
+  var hideSkipped = document.getElementById('hide-skipped') && document.getElementById('hide-skipped').checked;
   if (!merchants.length) {
     el.innerHTML = ''; noEl.style.display = 'block';
     document.getElementById('input-area').style.display = 'none';
@@ -446,17 +468,22 @@ function renderSelectList() {
   var html = '';
   for (var i = 0; i < merchants.length; i++) {
     var m = merchants[i];
+    var skipped = isSkipped(m.name);
+    if (hideSkipped && skipped) continue;
     var st = getMerchantStatus(m.name);
     var dotClass = st && st.status === 'sent' ? 'dot-done' : (st && st.status === 'draft' ? 'dot-draft' : 'dot-none');
-    html += '<div class="merchant-item ' + (selectedIdx === i ? 'selected' : '') + '" onclick="selectMerchant(' + i + ')">';
+    var attachStyle = m.attach ? 'border-color:#e17055;background:#fff8f6;' : '';
+    var skipStyle = skipped ? 'opacity:0.4;' : '';
+    html += '<div class="merchant-item ' + (selectedIdx === i ? 'selected' : '') + '" style="' + attachStyle + skipStyle + '" onclick="selectMerchant(' + i + ')">';
     html += '<div class="merchant-item-top">';
     html += '<div class="status-dot ' + dotClass + '"></div>';
     html += '<div class="merchant-name">' + m.name + '</div>';
     html += '<span class="badge badge-' + m.type + '">' + typeLabel(m.type) + '</span>';
-    if (m.attach) html += '<span style="font-size:10px;color:#e17055;">📎</span>';
+    if (m.attach) html += '<span style="font-size:11px;color:#e17055;font-weight:700;">📎 첨부필요</span>';
+    html += '<button style="margin-left:auto;background:none;border:none;font-size:10px;color:#b2bec3;cursor:pointer;padding:2px 6px;" onclick="event.stopPropagation();toggleSkip(\'' + m.name + '\')">' + (skipped ? '↩복구' : '건너뛰기') + '</button>';
     html += '</div></div>';
   }
-  el.innerHTML = html;
+  el.innerHTML = html || '<div class="empty">모든 가맹점이 숨겨져 있어요.</div>';
 }
 
 function renderManageList() {
@@ -570,8 +597,9 @@ function selectMerchant(idx) {
     if (el) el.value = '';
   }
   document.getElementById('action-btns').innerHTML =
-    '<button class="btn-send" onclick="doSend(\'sent\')">🚀 메일 발송</button>' +
-    '<button class="btn-draft" onclick="doSend(\'draft\')">💾 임시저장</button>';
+    '<button class="btn-send" onclick="doSend(\'sent\')" ' + (m.attach ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : '') + '>🚀 메일 발송</button>' +
+    '<button class="btn-draft" onclick="doSend(\'draft\')">💾 임시저장</button>' +
+    (m.attach ? '<div style="font-size:11px;color:#e17055;text-align:center;margin-top:4px;">📎 첨부파일 확인 후 임시저장 → 직접 발송해주세요!</div>' : '');
   generate();
 }
 
