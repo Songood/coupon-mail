@@ -446,7 +446,7 @@ function toggleSkip(name) {
   renderSelectList();
 }
 function getMonthKey() {
-  function getMonthKey() {
+  
    var y = document.getElementById('year') ? document.getElementById('year').value : new Date().getFullYear();
   var m = document.getElementById('month') ? document.getElementById('month').value : (new Date().getMonth() + 1);
   return y + '-' + String(m).padStart(2, '0');
